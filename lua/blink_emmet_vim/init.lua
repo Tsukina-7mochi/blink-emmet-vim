@@ -49,6 +49,7 @@ end
 ---Gets the last non-whitespace character sequence from current cursor
 ---@param line string current line text
 ---@param col integer 0-indexed byte column of the cursor
+---@param filetype string filetype resolved for the cursor
 ---@return string?
 local function get_last_word (line, col, filetype)
     local current_word = line:sub(1, col):match("%S+$")
@@ -67,10 +68,11 @@ end
 ---Gets the emmet string to be expanded
 ---@param line string current line text
 ---@param col integer 0-indexed byte column of the cursor
+---@param filetype string filetype resolved for the cursor
 ---@return string?
-local function emmet_complete (line, col)
-    local last_word = get_last_word(line, col)
-    local type = get_file_type() or fn["emmet#getFileType"]()
+local function emmet_complete (line, col, filetype)
+    local last_word = get_last_word(line, col, filetype)
+    local type = filetype or fn["emmet#getFileType"]()
     local ok1, rtype = pcall(fn["emmet#lang#type"], type)
     if not ok1 then
         return
@@ -141,14 +143,17 @@ function source:get_completions (ctx, callback)
     -- ctx.cursor is `{ row (1-indexed), col (0-indexed byte) }`.
     local line = ctx.line
     local col = ctx.cursor[2]
+    -- Resolve the filetype once and thread it through, instead of letting each
+    -- helper re-run the tree-sitter lookup.
+    local filetype = get_file_type()
 
-    local ok, word = pcall(get_last_word, line, col)
+    local ok, word = pcall(get_last_word, line, col, filetype)
 
     if not ok or not word or word == "" then
         return transformed_callback({})
     end
 
-    local text = emmet_complete(line, col)
+    local text = emmet_complete(line, col, filetype)
 
     if not text then
         return transformed_callback({})
