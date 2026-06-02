@@ -46,13 +46,19 @@ local function get_file_type ()
     return lang
 end
 
----Gets the emmet "abbr"
+---Gets the last non-whitespace character sequence from current cursor
+---@param line string current line text
+---@param col integer 0-indexed byte column of the cursor
+---@param filetype string filetype resolved for the cursor
 ---@return string?
-local function get_last_word ()
-    local current_word = fn.matchstr(vim.api.nvim_get_current_line(), "\\S\\+\\%.c")
-    local type = get_file_type() or fn["emmet#getFileType"]()
-    local ok1, rtype = pcall(fn["emmet#lang#type"], type)
-    if not ok1 then
+local function get_last_word (line, col, filetype)
+    local current_word = line:sub(1, col):match("%S+$")
+    if current_word == nil then
+        return nil
+    end
+    local type = filetype or fn["emmet#getFileType"]()
+    local ok, rtype = pcall(fn["emmet#lang#type"], type)
+    if not ok then
         return
     end
     local part = fn["emmet#lang#" .. rtype .. "#findTokens"](current_word)
@@ -60,10 +66,13 @@ local function get_last_word ()
 end
 
 ---Gets the emmet string to be expanded
+---@param line string current line text
+---@param col integer 0-indexed byte column of the cursor
+---@param filetype string filetype resolved for the cursor
 ---@return string?
-local function emmet_complete ()
-    local last_word = get_last_word()
-    local type = get_file_type() or fn["emmet#getFileType"]()
+local function emmet_complete (line, col, filetype)
+    local last_word = get_last_word(line, col, filetype)
+    local type = filetype or fn["emmet#getFileType"]()
     local ok1, rtype = pcall(fn["emmet#lang#type"], type)
     if not ok1 then
         return
@@ -131,13 +140,20 @@ function source:get_completions (ctx, callback)
         })
     end
 
-    local ok, word = pcall(get_last_word)
+    -- ctx.cursor is `{ row (1-indexed), col (0-indexed byte) }`.
+    local line = ctx.line
+    local col = ctx.cursor[2]
+    -- Resolve the filetype once and thread it through, instead of letting each
+    -- helper re-run the tree-sitter lookup.
+    local filetype = get_file_type()
+
+    local ok, word = pcall(get_last_word, line, col, filetype)
 
     if not ok or not word or word == "" then
         return transformed_callback({})
     end
 
-    local text = emmet_complete()
+    local text = emmet_complete(line, col, filetype)
 
     if not text then
         return transformed_callback({})
@@ -149,12 +165,10 @@ function source:get_completions (ctx, callback)
         return transformed_callback({})
     end
 
-    -- ctx.cursor is `{ row (1-indexed), col (0-indexed) }`; LSP ranges are
-    -- 0-indexed and end-exclusive.
-    local cursor = ctx.cursor
+    -- LSP ranges are 0-indexed and end-exclusive.
     local range = {
-        ["start"] = { line = cursor[1] - 1, character = cursor[2] - #word },
-        ["end"] = { line = cursor[1] - 1, character = cursor[2] },
+        ["start"] = { line = ctx.cursor[1] - 1, character = col - #word },
+        ["end"] = { line = ctx.cursor[1] - 1, character = col },
     }
 
     --- @type lsp.CompletionItem
