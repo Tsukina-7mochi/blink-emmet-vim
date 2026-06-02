@@ -28,7 +28,7 @@ local source = {}
 ---@return string
 local function get_file_type (row, col)
     local ok, parser = pcall(vim.treesitter.get_parser)
-    if not ok or parser == nil then
+    if not ok or not parser then
         return vim.bo.filetype
     end
 
@@ -145,19 +145,16 @@ function source:get_completions (ctx, callback)
     local filetype = get_file_type(ctx.cursor[1] - 1, ctx.cursor[2])
 
     local ok, word = pcall(get_last_word, line, col, filetype)
-
     if not ok or not word or word == "" then
         return transformed_callback({})
     end
 
     local text = emmet_complete(line, col, filetype)
-
     if not text then
         return transformed_callback({})
     end
 
     local snippet = build_snippet(text)
-
     if not snippet or snippet == "" then
         return transformed_callback({})
     end
