@@ -23,19 +23,18 @@ local defaults = {
 local source = {}
 
 ---Returns the filetype at the cursor, using tree-sitter if available
+---@param row integer cursor row position (0-indexed)
+---@param col integer cursor row position (0-indexed)
 ---@return string
-local function get_file_type ()
+local function get_file_type (row, col)
     local ok, parser = pcall(vim.treesitter.get_parser)
     if not ok or parser == nil then
         return vim.bo.filetype
     end
 
-    local cursor = vim.api.nvim_win_get_cursor(0)
-    local row = cursor[1] - 1
-    local col = cursor[2]
-
     local range_parser = parser:language_for_range({ row, col, row, col })
-    return range_parser:lang()
+    local lang = range_parser:lang()
+    return lang
 end
 
 ---Gets the last non-whitespace character sequence from current cursor
@@ -114,7 +113,12 @@ function source.new (opts)
 end
 
 function source:enabled ()
-    return vim.g.loaded_emmet_vim == 1 and vim.tbl_contains(self.opts.filetypes, get_file_type())
+    if vim.g.loaded_emmet_vim ~= 1 then
+        return false
+    end
+
+    local cursor = vim.api.nvim_win_get_cursor(0)
+    return vim.tbl_contains(self.opts.filetypes, get_file_type(cursor[1] - 1, cursor[2]))
 end
 
 function source:get_trigger_characters ()
@@ -138,7 +142,7 @@ function source:get_completions (ctx, callback)
     local col = ctx.cursor[2]
     -- Resolve the filetype once and thread it through, instead of letting each
     -- helper re-run the tree-sitter lookup.
-    local filetype = get_file_type()
+    local filetype = get_file_type(ctx.cursor[1] - 1, ctx.cursor[2])
 
     local ok, word = pcall(get_last_word, line, col, filetype)
 
