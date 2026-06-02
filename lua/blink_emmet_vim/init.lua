@@ -5,7 +5,6 @@ local InsertTextFormat = vim.lsp.protocol.InsertTextFormat
 
 ---@class blink_emmet_vim.Options
 ---@field public filetypes string[]
----@type blink_emmet_vim.Options
 local defaults = {
     filetypes = {
         "html",
@@ -22,12 +21,11 @@ local defaults = {
     },
 }
 
---- @module 'blink.cmp'
 --- @class blink.cmp.Source
 local source = {}
 
 ---Returns the filetype at the cursor, using tree-sitter if available
----@return unknown
+---@return string
 local function get_file_type ()
     local ok, parser = pcall(vim.treesitter.get_parser)
     if not ok or parser == nil then
@@ -126,6 +124,7 @@ function source:get_trigger_characters ()
 end
 
 function source:get_completions (ctx, callback)
+    ---@param items lsp.CompletionItem[]
     local function transformed_callback (items)
         callback({
             items = items,
