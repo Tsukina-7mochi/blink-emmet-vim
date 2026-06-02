@@ -1,5 +1,3 @@
-local fn = vim.fn
-
 local CompletionItemKind = vim.lsp.protocol.CompletionItemKind
 local InsertTextFormat = vim.lsp.protocol.InsertTextFormat
 
@@ -50,12 +48,12 @@ local function get_last_word (line, col, filetype)
     if current_word == nil then
         return nil
     end
-    local type = filetype or fn["emmet#getFileType"]()
-    local ok, rtype = pcall(fn["emmet#lang#type"], type)
+    local type = filetype or vim.fn["emmet#getFileType"]()
+    local ok, rtype = pcall(vim.fn["emmet#lang#type"], type)
     if not ok then
         return
     end
-    local part = fn["emmet#lang#" .. rtype .. "#findTokens"](current_word)
+    local part = vim.fn["emmet#lang#" .. rtype .. "#findTokens"](current_word)
     return part
 end
 
@@ -66,18 +64,18 @@ end
 ---@return string?
 local function emmet_complete (line, col, filetype)
     local last_word = get_last_word(line, col, filetype)
-    local type = filetype or fn["emmet#getFileType"]()
-    local ok1, rtype = pcall(fn["emmet#lang#type"], type)
+    local type = filetype or vim.fn["emmet#getFileType"]()
+    local ok1, rtype = pcall(vim.fn["emmet#lang#type"], type)
     if not ok1 then
         return
     end
-    local ok2, tree = pcall(fn["emmet#parseIntoTree"], last_word, rtype)
+    local ok2, tree = pcall(vim.fn["emmet#parseIntoTree"], last_word, rtype)
     if not ok2 then
         return
     end
     local tree_view = tree.child[1]
-    local indentation = fn["emmet#getIndentation"](type)
-    local ok3, string_view = pcall(fn["emmet#toString"], tree_view, type, 0, { type }, 0, indentation)
+    local indentation = vim.fn["emmet#getIndentation"](type)
+    local ok3, string_view = pcall(vim.fn["emmet#toString"], tree_view, type, 0, { type }, 0, indentation)
     return ok3 and string_view or nil
 end
 
@@ -92,7 +90,7 @@ local function build_snippet (text)
             n = n + 1
             return "$" .. n
         elseif vim.startswith(placeholder, "lorem") then
-            local lorem = fn["emmet#lorem#en#expand"](placeholder)
+            local lorem = vim.fn["emmet#lorem#en#expand"](placeholder)
             return string.format("%s", lorem)
         else
             -- Sometimes emmet uses numbered placeholders, which we want to remove
