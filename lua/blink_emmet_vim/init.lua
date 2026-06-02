@@ -5,7 +5,6 @@ local InsertTextFormat = vim.lsp.protocol.InsertTextFormat
 
 ---@class blink_emmet_vim.Options
 ---@field public filetypes string[]
-
 ---@type blink_emmet_vim.Options
 local defaults = {
     filetypes = {
@@ -31,19 +30,16 @@ local source = {}
 ---@return unknown
 local function get_file_type ()
     local ok, parser = pcall(vim.treesitter.get_parser)
-    if not ok then
+    if not ok or parser == nil then
         return vim.bo.filetype
     end
+
     local cursor = vim.api.nvim_win_get_cursor(0)
-    local range_parser = parser:language_for_range({ cursor[1] - 1, cursor[2], cursor[1] - 1, cursor[2] })
-    local lang = range_parser:lang()
-    if lang == "html" then
-        local ok_node, node = pcall(vim.treesitter.get_node)
-        if ok_node and node and node:type() == "style_element" then
-            return "css"
-        end
-    end
-    return lang
+    local row = cursor[1] - 1
+    local col = cursor[2]
+
+    local range_parser = parser:language_for_range({ row, col, row, col })
+    return range_parser:lang()
 end
 
 ---Gets the last non-whitespace character sequence from current cursor
